@@ -9,110 +9,119 @@ import Foundation
  6. Вывести сами объекты в консоль.
 */
 
+
 enum CarAction{
-    case engineOn, engineOff, windowsOpen, windowsClose
-    case trunkLoad(Int)
-    case trunkUnload(Int)
+    case move, stop, windowsOpen, windowsClose, loadTrunk(Int)
 }
 enum FuelType{
     case dizel,petrol
 }
 
-class Engine{
-    let horsePower:Int
-    let valveCount:Int
-    let fuelType: FuelType
-    init(horsePower:Int, valveCount:Int, fuelType: FuelType) {
-        self.horsePower = horsePower
-        self.valveCount = valveCount
-        self.fuelType = fuelType
+protocol Car: CustomStringConvertible{
+    var carName: String {get set}
+    var isMoving: Bool { get set }
+    var isWindowOpen: Bool { get set}
+    var fuelType: FuelType { get }
+
+}
+
+extension Car {
+    mutating func move() -> Bool {
+        isMoving.toggle()
+        isMoving == true ? print("\(carName) is moving") : print("\(carName) is stopped")
+        return isMoving
     }
-    deinit {
-        print("Engine with horsePower \(self.horsePower) is deleted and fuelType \(fuelType)")
+
+    mutating func openWindow() -> Bool {
+        isWindowOpen.toggle()
+        isWindowOpen == true ? print("\(carName) windows is open") : print("\(carName) windows is closed")
+        return isWindowOpen
+    }
+    
+    mutating func doAction(carAction: CarAction) {
+        switch carAction {
+        case .move: move()
+        case .stop: move()
+        case .windowsOpen: openWindow()
+        case .windowsClose: openWindow()
+        case let .loadTrunk(weight) where self is TruckCar:
+            let truck = self as! TruckCar
+            truck.loadCargo(weight: weight)
+        default:
+            print("\(carName) action not define: \(carAction)")
+        }
     }
 }
 
-class Car{
-    var name: String
-    let wheelCount: Int
-    let fuelTank: Int
-    weak var engine: Engine?
-    init(name: String, wheelCount: Int, fuelTank: Int, engine: Engine?) {
-        self.name = name
-        self.wheelCount = wheelCount
-        self.engine = engine
-        self.fuelTank = fuelTank
-    }
-    
-    func doAction(carAction: CarAction){}
-    deinit {
-        print("Car \(self.name) is deleted")
-    }
-    func drive(){
-        if engine != nil{
-            print("Drive")
-        }
-        else{
-            print("Please buy engine :)")
-        }
-    }
-    func info() {
-        if let engine = engine {
-            print("\(name), has \(wheelCount) weels, \(engine.horsePower) horse power and \(fuelTank)L fuel tank ")
-        }
-        else{
-            print("\(name), has \(wheelCount) weels, \(fuelTank)L fuel tank, NO ENGINE!!! ")
-        }
-    }
-    
-}
 
- 
+
 class SportCar: Car{
-    var maxSpeed:Int
-    init(name: String, sportCarEngine:Engine?, maxSpeed: Int) {
-        self.maxSpeed = maxSpeed
-        super.init(name: name + " SportCar", wheelCount: 4,  fuelTank: 200, engine:sportCarEngine)
+    var carName: String
+    var description: String {
+        get{
+            return  """
+            \(carName) with engine on fuel type: \(self.fuelType).
+            Windows open state: \(isWindowOpen)
+            """
+        }
     }
-    override func info() {
-        super.info()
-        print("Max speed \(maxSpeed)")
-    }
-    func setNewEngine(engine:Engine){
-        super.engine = engine
-    }
-}
-
-class TruckCar: Car{
-    let maxLoadKg: Int
-    init(name: String, wheelCount: Int, maxLoadKg: Int, truckEngine:Engine) {
-        self.maxLoadKg = maxLoadKg
-        super.init(name: name + " Big Powerful Truck", wheelCount: wheelCount, fuelTank: 500, engine: truckEngine)
-    }
-    override func drive() {
-        print("Slow drive...but whery powerful")
-    }
-    override func info() {
-        super.info()
-        print("Max load \(maxLoadKg)Kg")
-    }
-}
-var sportCarEngine: Engine? //= Engine(horsePower: 300, valveCount: 32, fuelType: .petrol)
-var truckCarEngine: Engine? = Engine(horsePower: 800, valveCount: 64, fuelType: .dizel)
+    var isMoving: Bool = false
+    var isWindowOpen: Bool = false
+    var fuelType: FuelType
     
-var sportCar: SportCar? = SportCar(name: "Super Puper Fast Car", sportCarEngine: sportCarEngine, maxSpeed: 320)
-var truckCar: TruckCar? = TruckCar(name:"Tutu",wheelCount: 8 , maxLoadKg: 15000, truckEngine: truckCarEngine!)
+    init(carName: String) {
+        self.carName = carName
+        self.fuelType = .petrol
+    }
+    
 
-sportCar!.drive()
-sportCarEngine = Engine(horsePower: 300, valveCount: 32, fuelType: .petrol)
-sportCar!.setNewEngine(engine: sportCarEngine!)
-sportCar!.drive()
+}
 
-sportCar!.info()
-truckCar!.info()
+class TruckCar : Car{
+    var carName: String
+    var description: String {
+        get{
+            return """
+            \(carName) with engine on fuel type: \(self.fuelType). Max load: \(truncMaxLoad)Kg.
+            Trunc status: loaded \(truncLoaded)Kg
+            """
+        }
+    }
+    var isMoving: Bool = false
+    var isWindowOpen: Bool = false
+    var fuelType: FuelType
+    var truncMaxLoad: Int
+    var truncLoaded: Int = 0
+    
+    init(carName: String, trunkMaxLoad: Int) {
+        self.carName = carName
+        self.fuelType = .dizel
+        self.truncMaxLoad = trunkMaxLoad
+    }
+    
+    func loadCargo(weight: Int){
+        if weight + truncLoaded <= truncMaxLoad{
+            truncLoaded += weight
+            print("\(carName) trunk loaded: \(truncLoaded)Kg")
+        }
+        else{
+            print("Not enough free space for: \(weight) ")
+            print("Trunk: \(truncLoaded)Kg trunc max load \(truncMaxLoad)")
+            
+        }
+        
+    }
+}
+var sportCar: SportCar = SportCar(carName: "Sport Car")
+var truckCar: TruckCar = TruckCar(carName: "Big Truck",trunkMaxLoad: 2000)
 
-sportCar = nil
-truckCar = nil
-sportCarEngine = nil
-truckCarEngine = nil
-
+sportCar.doAction(carAction: .move)
+sportCar.doAction(carAction: .stop)
+sportCar.doAction(carAction: .loadTrunk(150))
+truckCar.doAction(carAction: .loadTrunk(150))
+truckCar.doAction(carAction: .loadTrunk(1050))
+truckCar.doAction(carAction: .loadTrunk(1000))
+truckCar.doAction(carAction: .windowsOpen)
+truckCar.doAction(carAction: .windowsClose)
+print(sportCar)
+print(truckCar)
